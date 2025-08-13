@@ -8,7 +8,10 @@
     </parent>
 
     <artifactId>stat</artifactId>
+
     <name>stat</name>
+
+    <packaging>pom</packaging>
 
     <build>
         <finalName>stat</finalName>
