@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.exception;
+package ru.practicum.stat.exception;
 
 public class InternalServerException extends RuntimeException {
     public InternalServerException(String message) {

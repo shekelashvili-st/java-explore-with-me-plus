@@ -1,2 +1,31 @@
-package ru.practicum.stat.dto;public class EndpointHit {
+package ru.practicum.stat.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import org.springframework.format.annotation.DateTimeFormat;
+import ru.practicum.stat.annotations.ValidIp;
+import ru.practicum.stat.annotations.ValidUri;
+
+import java.time.LocalDateTime;
+
+@Data
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+public class EndpointHit {
+    @EqualsAndHashCode.Include
+    private long id;
+
+    @NotBlank
+    final private String app;
+
+    @ValidUri
+    final private String uri;
+
+    @ValidIp
+    final private String api;
+
+    @NotNull
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    final private LocalDateTime timestamp;
 }
