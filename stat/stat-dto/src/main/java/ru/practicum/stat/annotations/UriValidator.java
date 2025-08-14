@@ -2,6 +2,7 @@ package ru.practicum.stat.annotations;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 
