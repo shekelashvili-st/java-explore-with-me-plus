@@ -3,15 +3,15 @@ package ru.practicum.stat.storage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Repository;
 import ru.practicum.stat.exception.InternalServerException;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 
-@Component
+@Repository
 @RequiredArgsConstructor
-public class BaseDbStorage {
+public class StatDbStorage {
     protected final JdbcTemplate jdbc;
 
     protected long insert(String query, Object... params) {

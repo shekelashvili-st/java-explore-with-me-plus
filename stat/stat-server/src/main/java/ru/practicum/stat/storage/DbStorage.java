@@ -1,2 +1,4 @@
-package ru.practicum.stat.storage;public interface DbStorage {
+package ru.practicum.stat.storage;
+
+public interface DbStorage {
 }

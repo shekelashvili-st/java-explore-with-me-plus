@@ -17,15 +17,15 @@ public class EndpointHit {
     private long id;
 
     @NotBlank
-    final private String app;
+    private final String app;
 
     @ValidUri
-    final private String uri;
+    private final String uri;
 
     @ValidIp
-    final private String api;
+    private final String api;
 
     @NotNull
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    final private LocalDateTime timestamp;
+    private final LocalDateTime timestamp;
 }
