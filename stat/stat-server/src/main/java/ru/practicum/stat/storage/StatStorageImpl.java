@@ -20,21 +20,17 @@ public class StatStorageImpl implements StatStorage {
     protected final JdbcTemplate jdbc;
     private static final String SAVE_HIT = "INSERT INTO endpoint_hit (app, uri, ip, timestamp) VALUES (?, ?, ?, ?);";
     private static final String GET_STATS = """
-            SELECT 
-                app, 
-                uri, 
-                CASE
+            SELECT app, uri, CASE
                     WHEN ? = TRUE THEN COUNT(DISTINCT ip)
                     ELSE COUNT(*)
                 END AS hits
-            FROM 
-                endpoint_hit
-            WHERE 
+            FROM endpoint_hit
+            WHERE
                 timestamp BETWEEN ? AND ?
                 {uris_condition}
-            GROUP BY 
+            GROUP BY
                 app, uri
-            ORDER BY 
+            ORDER BY
                 hits DESC
             """;
 
