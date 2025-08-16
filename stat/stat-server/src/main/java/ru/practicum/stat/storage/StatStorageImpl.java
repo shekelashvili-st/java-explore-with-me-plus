@@ -18,8 +18,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StatStorageImpl implements StatStorage {
     protected final JdbcTemplate jdbc;
-    private final String SAVE_HIT = "INSERT INTO endpoint_hit (app, uri, ip, timestamp) VALUES (?, ?, ?, ?);";
-    private final String GET_STATS = """
+    private static final String SAVE_HIT = "INSERT INTO endpoint_hit (app, uri, ip, timestamp) VALUES (?, ?, ?, ?);";
+    private static final String GET_STATS = """
             SELECT 
                 app, 
                 uri, 
