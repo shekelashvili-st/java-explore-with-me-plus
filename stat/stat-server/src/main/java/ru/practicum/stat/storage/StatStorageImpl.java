@@ -37,7 +37,7 @@ public class StatStorageImpl implements StatStorage {
             ps.setObject(idx++, hit.getApp());
             ps.setObject(idx++, hit.getUri());
             ps.setObject(idx++, hit.getIp());
-            ps.setObject(idx++, LocalDateTime.now());
+            ps.setObject(idx, hit.getTimestamp());
             return ps;
         }, keyHolder);
 
