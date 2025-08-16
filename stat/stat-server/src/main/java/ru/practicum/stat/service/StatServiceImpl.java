@@ -14,7 +14,7 @@ import java.util.List;
 
 @Service
 @AllArgsConstructor
-public class StatServiceImpl implements StatService{
+public class StatServiceImpl implements StatService {
     private final StatStorage statStorage;
 
     @Override
