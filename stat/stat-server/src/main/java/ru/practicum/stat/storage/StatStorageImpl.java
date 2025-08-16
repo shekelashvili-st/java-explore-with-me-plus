@@ -9,7 +9,6 @@ import ru.practicum.stat.dto.ViewStats;
 import ru.practicum.stat.exception.InternalServerException;
 
 import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,19 +19,19 @@ public class StatStorageImpl implements StatStorage {
     protected final JdbcTemplate jdbc;
     private static final String SAVE_HIT = "INSERT INTO endpoint_hit (app, uri, ip, timestamp) VALUES (?, ?, ?, ?);";
     private static final String GET_STATS = """
-        SELECT app, uri,
-               CASE WHEN ? = TRUE THEN COUNT(DISTINCT ip) ELSE COUNT(*) END AS hits
-        FROM endpoint_hit
-        WHERE timestamp BETWEEN ? AND ? {uris_condition}
-        GROUP BY app, uri
-        ORDER BY hits DESC
-        """;
+            SELECT app, uri,
+                   CASE WHEN ? = TRUE THEN COUNT(DISTINCT ip) ELSE COUNT(*) END AS hits
+            FROM endpoint_hit
+            WHERE timestamp BETWEEN ? AND ? {uris_condition}
+            GROUP BY app, uri
+            ORDER BY hits DESC
+            """;
 
     public long saveHit(EndpointHit hit) {
         GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement ps = connection
-                    .prepareStatement(SAVE_HIT, Statement.RETURN_GENERATED_KEYS);
+                    .prepareStatement(SAVE_HIT, new String[]{"id"});
             int idx = 1;
             ps.setObject(idx++, hit.getApp());
             ps.setObject(idx++, hit.getUri());

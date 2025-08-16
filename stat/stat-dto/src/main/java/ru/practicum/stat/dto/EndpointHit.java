@@ -1,12 +1,13 @@
 package ru.practicum.stat.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.springframework.format.annotation.DateTimeFormat;
 import ru.practicum.stat.annotations.ValidIp;
 import ru.practicum.stat.annotations.ValidUri;
+import ru.practicum.stat.util.CustomLocalDateTimeDeserializer;
 
 import java.time.LocalDateTime;
 
@@ -25,8 +26,8 @@ public class EndpointHit {
     @ValidIp
     private final String ip;
 
-    @NotNull
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     private final LocalDateTime timestamp;
 
     public EndpointHit(String app, String uri, String ip, LocalDateTime timestamp) {
