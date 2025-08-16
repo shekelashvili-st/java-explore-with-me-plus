@@ -7,11 +7,13 @@
         <version>0.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+
     <artifactId>stat-dto</artifactId>
 
     <packaging>jar</packaging>
 
     <name>stat-dto</name>
+
     <dependencies>
         <dependency>
             <groupId>org.projectlombok</groupId>
