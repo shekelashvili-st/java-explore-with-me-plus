@@ -4,8 +4,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriComponentsBuilder;
 import ru.practicum.stat.dto.EndpointHit;
 import ru.practicum.stat.dto.ViewStats;
@@ -20,19 +22,21 @@ public class StatClientImpl implements StatClient {
 
     @Autowired
     public StatClientImpl(@Value("${server.url}") String serverUrl) {
+        DefaultUriBuilderFactory uriBuilderFactory = new DefaultUriBuilderFactory(serverUrl);
+        uriBuilderFactory.setEncodingMode(DefaultUriBuilderFactory.EncodingMode.VALUES_ONLY);
         client = RestClient.builder()
-                .baseUrl(serverUrl)
+                .uriBuilderFactory(uriBuilderFactory)
                 .build();
     }
 
     @Override
-    public EndpointHit create(EndpointHit endpointHit) {
-        return client.post()
+    public void create(EndpointHit endpointHit) {
+        ResponseEntity<Void> response = client.post()
                 .uri("/hit")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(endpointHit)
                 .retrieve()
-                .body(EndpointHit.class);
+                .toBodilessEntity();
     }
 
     @Override
