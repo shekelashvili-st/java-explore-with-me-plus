@@ -6,5 +6,5 @@ import lombok.Data;
 public class ViewStats {
     private final String app;
     private final String uri;
-    private int hits;
+    private final int hits;
 }
