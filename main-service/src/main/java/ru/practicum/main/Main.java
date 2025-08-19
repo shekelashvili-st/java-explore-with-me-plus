@@ -1,11 +1,11 @@
-package ru.practicum.stat;
+package ru.practicum.main;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class StatMain {
+public class Main {
     public static void main(String[] args) {
-        SpringApplication.run(StatMain.class, args);
+        SpringApplication.run(Main.class, args);
     }
 }
