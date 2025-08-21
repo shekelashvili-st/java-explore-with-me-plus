@@ -7,9 +7,7 @@ import ru.practicum.main.Category.entity.Category;
 public class CategoryMapper {
 
     public static Category toEntity(NewCategoryDto dto) {
-        return Category.builder()
-                .name(dto.getName())
-                .build();
+        return new Category(dto.getName());
     }
 
     public static CategoryDto toDto(Category category) {

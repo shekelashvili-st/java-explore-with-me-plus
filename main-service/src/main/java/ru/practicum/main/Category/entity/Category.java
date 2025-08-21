@@ -1,16 +1,13 @@
 package ru.practicum.main.Category.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
+@Table(name = "categories")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Category {
 
     @Id
@@ -18,4 +15,8 @@ public class Category {
     private Long id;
 
     private String name;
+
+    public Category(String name) {
+        this.name = name;
+    }
 }

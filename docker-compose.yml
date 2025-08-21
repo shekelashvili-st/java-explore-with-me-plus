@@ -1,37 +1,37 @@
 services:
-  stat-server:
-    build: stat/stat-server
-    image: stat-server
-    container_name: stat-server
-    ports:
-      - "9090:9090"
-    depends_on:
-      stats-db:
-        condition: service_healthy
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://stats-db:5432/stat
-      - SPRING_DATASOURCE_USERNAME=stat
-      - SPRING_DATASOURCE_PASSWORD=stat
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9090/actuator/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  stats-db:
-    image: postgres:16.1
-    container_name: postgres-stat
-    ports:
-      - "6541:5432"
-    environment:
-      - POSTGRES_PASSWORD=stat
-      - POSTGRES_USER=stat
-      - POSTGRES_DB=stat
-    healthcheck:
-      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
-      timeout: 5s
-      interval: 5s
-      retries: 10
+#  stat-server:
+#    build: stat/stat-server
+#    image: stat-server
+#    container_name: stat-server
+#    ports:
+#      - "9090:9090"
+#    depends_on:
+#      stats-db:
+#        condition: service_healthy
+#    environment:
+#      - SPRING_DATASOURCE_URL=jdbc:postgresql://stats-db:5432/stat
+#      - SPRING_DATASOURCE_USERNAME=stat
+#      - SPRING_DATASOURCE_PASSWORD=stat
+#    healthcheck:
+#      test: [ "CMD", "curl", "-f", "http://localhost:9090/actuator/health" ]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 5
+#
+#  stats-db:
+#    image: postgres:16.1
+#    container_name: postgres-stat
+#    ports:
+#      - "6541:5432"
+#    environment:
+#      - POSTGRES_PASSWORD=stat
+#      - POSTGRES_USER=stat
+#      - POSTGRES_DB=stat
+#    healthcheck:
+#      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+#      timeout: 5s
+#      interval: 5s
+#      retries: 10
 
 #  ewm-service:
 #    build: main-service
@@ -51,18 +51,18 @@ services:
 #      interval: 30s
 #      timeout: 10s
 #      retries: 5
-#
-#  ewm-db:
-#    image: postgres:16.1
-#    container_name: postgres-main
-#    ports:
-#      - "6542:5432"
-#    environment:
-#      - POSTGRES_PASSWORD=main
-#      - POSTGRES_USER=main
-#      - POSTGRES_DB=main
-#    healthcheck:
-#      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
-#      timeout: 5s
-#      interval: 5s
-#      retries: 10
+
+  ewm-db:
+    image: postgres:16.1
+    container_name: postgres-main
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=main
+      - POSTGRES_USER=main
+      - POSTGRES_DB=main
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10

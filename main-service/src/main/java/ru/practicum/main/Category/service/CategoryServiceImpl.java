@@ -6,7 +6,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.main.Category.Repository.CategoryRepository;
+import ru.practicum.main.Category.repository.CategoryRepository;
 import ru.practicum.main.Category.dto.CategoryDto;
 import ru.practicum.main.Category.dto.NewCategoryDto;
 import ru.practicum.main.Category.entity.Category;
