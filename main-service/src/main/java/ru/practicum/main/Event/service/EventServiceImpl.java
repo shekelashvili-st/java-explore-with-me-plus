@@ -1,12 +1,39 @@
 package ru.practicum.main.Event.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import ru.practicum.main.Category.repository.CategoryRepository;
+import ru.practicum.main.Category.dto.CategoryDto;
+import ru.practicum.main.Category.entity.Category;
+import ru.practicum.main.Category.mapper.CategoryMapper;
 import ru.practicum.main.Event.dto.*;
+import ru.practicum.main.Event.entity.Event;
+import ru.practicum.main.Event.entity.EventState;
+import ru.practicum.main.Event.mapper.EventMapper;
+import ru.practicum.main.Event.repository.EventRepository;
+import ru.practicum.main.Event.repository.EventSpecifications;
+import ru.practicum.main.Exception.ConflictException;
+import ru.practicum.main.Exception.NotFoundException;
+import ru.practicum.main.User.dto.UserShortDto;
+import ru.practicum.stat.client.StatClient;
+import ru.practicum.stat.dto.EndpointHit;
+import ru.practicum.stat.dto.ViewStats;
 
-import java.util.List;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -14,56 +41,363 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class EventServiceImpl implements EventService {
 
-    // private final EventRepository eventRepository;
-    // private final CategoryRepository categoryRepository;
-    // private final StatsClient statsClient;
+    private final EventRepository eventRepository;
+    private final CategoryRepository categoryRepository;
+    private final StatClient statClient;
+
+    @Value("${app.name:ewm-main}")
+    private String appName;
+
+    private static final DateTimeFormatter F = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // ===== Public =====
     @Override
-    public List<EventShortDto> getAllPublicEvents(String text, List<Long> categories, Boolean paid, String rangeStart,
-                                                String rangeEnd, Boolean onlyAvailable, String sort, Integer from, Integer size) {
-        throw new UnsupportedOperationException("Not implemented yet");
+    public List<EventShortDto> getAllPublicEvents(String text,
+                                                  List<Long> categories,
+                                                  Boolean paid,
+                                                  String rangeStart,
+                                                  String rangeEnd,
+                                                  Boolean onlyAvailable,
+                                                  String sort,
+                                                  Integer from,
+                                                  Integer size) {
+        saveHit();
+
+        LocalDateTime start = parse(rangeStart);
+        LocalDateTime end = parse(rangeEnd);
+
+        if (start == null && end == null) start = LocalDateTime.now();
+        ensureRangeValid(start, end);
+
+        Specification<Event> spec = EventSpecifications.publicSearch(text, categories, paid, start, end);
+
+        List<Event> events = eventRepository.findAll(spec);
+
+        if (Boolean.TRUE.equals(onlyAvailable)) {
+            events = events.stream()
+                    .filter(e -> e.getParticipantLimit() == null || e.getParticipantLimit() == 0
+                            || getConfirmedCount(e.getId()) < e.getParticipantLimit())
+                    .collect(Collectors.toList());
+        }
+
+        Map<Long, Long> viewsByEvent = fetchViews(events);
+
+        String sortMode = (sort == null) ? "EVENT_DATE" : sort;
+        Comparator<Event> byDate = Comparator.comparing(Event::getEventDate);
+        if ("VIEWS".equalsIgnoreCase(sortMode)) {
+            Comparator<Event> byViewsDesc = Comparator
+                    .comparing((Event e) -> viewsByEvent.getOrDefault(e.getId(), 0L))
+                    .reversed()
+                    .thenComparing(byDate);
+            events.sort(byViewsDesc);
+        } else {
+            events.sort(byDate);
+        }
+
+        int startIdx = Math.max(0, from == null ? 0 : from);
+        int endIdx = Math.min(events.size(), startIdx + (size == null ? 10 : size));
+        if (startIdx > endIdx) return List.of();
+
+        return events.subList(startIdx, endIdx).stream()
+                .map(e -> toShortDtoRich(e, viewsByEvent.getOrDefault(e.getId(), 0L)))
+                .collect(Collectors.toList());
     }
 
     @Override
     public EventFullDto getPublishedEventById(Long eventId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        Event e = eventRepository.findByIdAndState(eventId, EventState.PUBLISHED)
+                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
+
+        saveHit();
+
+        Map<Long, Long> views = fetchViews(List.of(e));
+        return toFullDtoRich(e, views.getOrDefault(e.getId(), 0L));
     }
 
     // ===== Private =====
     @Override
     public List<EventShortDto> getUserEvents(Long userId, Integer from, Integer size) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        int f = from == null ? 0 : from;
+        int s = size == null ? 10 : size;
+
+        int page = from / size;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdOn"));
+
+        Page<Event> eventsPage = eventRepository.findByInitiatorId(userId, pageable);
+        List<Event> events = eventsPage.getContent();
+        int startIdx = Math.max(0, f);
+        int endIdx = Math.min(events.size(), startIdx + s);
+        if (startIdx > endIdx) return List.of();
+
+        Map<Long, Long> viewsByEvent = fetchViews(events.subList(startIdx, endIdx));
+
+        return events.subList(startIdx, endIdx).stream()
+                .map(e -> toShortDtoRich(e, viewsByEvent.getOrDefault(e.getId(), 0L)))
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public EventFullDto addEvent(Long userId, NewEventDto body) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        LocalDateTime eventDate = parseRequired(body.getEventDate());
+        if (!eventDate.isAfter(LocalDateTime.now().plusHours(2))) {
+            throw new ConflictException("Field: eventDate. Error: должно содержать дату, которая ещё не наступила. Value: " + body.getEventDate());
+        }
+
+        Category category = categoryRepository.findById(body.getCategory())
+                .orElseThrow(() -> new NotFoundException("Category with id=" + body.getCategory() + " was not found"));
+
+        Event saved = eventRepository.save(EventMapper.toEntity(body, category, userId));
+        return toFullDtoRich(saved, 0L);
     }
 
     @Override
     public EventFullDto getEventByUser(Long userId, Long eventId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        Event e = getUserEventOrThrow(userId, eventId);
+        Map<Long, Long> views = fetchViews(List.of(e));
+        return toFullDtoRich(e, views.getOrDefault(e.getId(), 0L));
     }
 
     @Override
     @Transactional
     public EventFullDto updateUserEvent(Long userId, Long eventId, UpdateEventUserRequest body) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        Event e = getUserEventOrThrow(userId, eventId);
+
+        if (!(e.getState() == EventState.PENDING || e.getState() == EventState.CANCELED)) {
+            throw new ConflictException("Only pending or canceled events can be changed");
+        }
+
+        if (body.getAnnotation() != null) e.setAnnotation(body.getAnnotation());
+        if (body.getDescription() != null) e.setDescription(body.getDescription());
+        if (body.getTitle() != null) e.setTitle(body.getTitle());
+
+        if (body.getEventDate() != null) {
+            LocalDateTime newDate = parseRequired(body.getEventDate().toString());
+            if (!newDate.isAfter(LocalDateTime.now().plusHours(2))) {
+                throw new ConflictException("Field: eventDate. Error: должно содержать дату, которая ещё не наступила. Value: " + body.getEventDate());
+            }
+            e.setEventDate(newDate);
+        }
+
+        if (body.getLocation() != null) {
+            e.setLat(body.getLocation().getLat());
+            e.setLon(body.getLocation().getLon());
+        }
+        if (body.getPaid() != null) e.setPaid(body.getPaid());
+        if (body.getParticipantLimit() != null) e.setParticipantLimit(body.getParticipantLimit());
+        if (body.getRequestModeration() != null) e.setRequestModeration(body.getRequestModeration());
+        if (body.getCategory() != null) {
+            Category category = categoryRepository.findById(body.getCategory())
+                    .orElseThrow(() -> new NotFoundException("Category with id=" + body.getCategory() + " was not found"));
+            e.setCategory(category);
+        }
+
+        if (body.getStateAction() != null) {
+            switch (body.getStateAction()) {
+                case SEND_TO_REVIEW -> e.setState(EventState.PENDING);
+                case CANCEL_REVIEW -> e.setState(EventState.CANCELED);
+                default -> throw new ConflictException("Unknown stateAction: " + body.getStateAction());
+            }
+        }
+
+        Event saved = eventRepository.save(e);
+        Map<Long, Long> views = fetchViews(List.of(saved));
+        return toFullDtoRich(saved, views.getOrDefault(saved.getId(), 0L));
     }
 
     // ===== Admin =====
     @Override
     public List<EventFullDto> searchAdminEvents(List<Long> users, List<String> states, List<Long> categories,
                                                 String rangeStart, String rangeEnd, Integer from, Integer size) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        LocalDateTime start = parse(rangeStart);
+        LocalDateTime end = parse(rangeEnd);
+        ensureRangeValid(start, end);
+
+        List<EventState> st = null;
+        if (states != null && !states.isEmpty()) {
+            st = states.stream().map(s -> {
+                try { return EventState.valueOf(s); }
+                catch (IllegalArgumentException ex) { throw new ConflictException("Unknown state: " + s); }
+            }).toList();
+        }
+
+        Specification<Event> spec = EventSpecifications.adminSearch(users, st, categories, start, end);
+        List<Event> events = eventRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdOn"));
+
+        int f = from == null ? 0 : from;
+        int s = size == null ? 10 : size;
+        int to = Math.min(events.size(), f + s);
+        if (f > to) return List.of();
+
+        Map<Long, Long> viewsByEvent = fetchViews(events.subList(f, to));
+
+        return events.subList(f, to).stream()
+                .map(e -> toFullDtoRich(e, viewsByEvent.getOrDefault(e.getId(), 0L)))
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public EventFullDto updateByAdmin(Long eventId, UpdateEventAdminRequest body) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        Event e = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
+
+        if (body.getAnnotation() != null) e.setAnnotation(body.getAnnotation());
+        if (body.getDescription() != null) e.setDescription(body.getDescription());
+        if (body.getTitle() != null) e.setTitle(body.getTitle());
+        if (body.getEventDate() != null) e.setEventDate(parseRequired(body.getEventDate().toString()));
+        if (body.getLocation() != null) { e.setLat(body.getLocation().getLat()); e.setLon(body.getLocation().getLon()); }
+        if (body.getPaid() != null) e.setPaid(body.getPaid());
+        if (body.getParticipantLimit() != null) e.setParticipantLimit(body.getParticipantLimit());
+        if (body.getRequestModeration() != null) e.setRequestModeration(body.getRequestModeration());
+        if (body.getCategory() != null) {
+            Category category = categoryRepository.findById(body.getCategory())
+                    .orElseThrow(() -> new NotFoundException("Category with id=" + body.getCategory() + " was not found"));
+            e.setCategory(category);
+        }
+
+        if (body.getStateAction() != null) {
+            switch (body.getStateAction().toString()) {
+                case "PUBLISH_EVENT" -> {
+                    if (e.getState() != EventState.PENDING) {
+                        throw new ConflictException("Cannot publish the event because it's not in the right state: " + e.getState());
+                    }
+                    LocalDateTime publishTime = LocalDateTime.now();
+                    if (!e.getEventDate().isAfter(publishTime.plusHours(1))) {
+                        throw new ConflictException("EventDate must be at least 1 hour after publication");
+                    }
+                    e.setPublishedOn(publishTime);
+                    e.setState(EventState.PUBLISHED);
+                }
+                case "REJECT_EVENT" -> {
+                    if (e.getState() == EventState.PUBLISHED) {
+                        throw new ConflictException("Cannot reject the event because it's already published");
+                    }
+                    e.setState(EventState.CANCELED);
+                }
+                default -> throw new ConflictException("Unknown stateAction: " + body.getStateAction());
+            }
+        }
+
+        Event saved = eventRepository.save(e);
+        Map<Long, Long> views = fetchViews(List.of(saved));
+        return toFullDtoRich(saved, views.getOrDefault(saved.getId(), 0L));
+    }
+
+    // ===== Helpers =====
+    private void ensureRangeValid(LocalDateTime start, LocalDateTime end) {
+        if (start != null && end != null && end.isBefore(start)) {
+            throw new ConflictException("rangeEnd must not be before rangeStart");
+        }
+    }
+
+    private LocalDateTime parse(String s) {
+        if (s == null || s.isBlank()) return null;
+        return LocalDateTime.parse(s, F);
+    }
+
+    private LocalDateTime parseRequired(String s) {
+        return LocalDateTime.parse(s, F);
+    }
+
+    private Event getUserEventOrThrow(Long userId, Long eventId) {
+        Event e = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
+        if (!Objects.equals(e.getInitiatorId(), userId)) {
+            throw new NotFoundException("Event with id=" + eventId + " was not found");
+        }
+        return e;
+    }
+
+    // TODO: заменить, когда появится модуль заявок
+    private long getConfirmedCount(Long eventId) {
+        return 0L;
+    }
+
+    private EventFullDto toFullDtoRich(Event e, long views) {
+        EventFullDto dto = EventMapper.toFullDto(e);
+        CategoryDto cat = CategoryMapper.toDto(e.getCategory());
+        dto.setCategory(cat);
+        dto.setInitiator(buildInitiator(e.getInitiatorId()));
+        dto.setConfirmedRequests(getConfirmedCount(e.getId()));
+        dto.setViews(views);
+        return dto;
+    }
+
+    private EventShortDto toShortDtoRich(Event e, long views) {
+        EventShortDto dto = EventMapper.toShortDto(e);
+        dto.setCategory(CategoryMapper.toDto(e.getCategory()));
+        dto.setInitiator(buildInitiator(e.getInitiatorId()));
+        dto.setConfirmedRequests(getConfirmedCount(e.getId()));
+        dto.setViews(views);
+        return dto;
+    }
+
+    private UserShortDto buildInitiator(Long userId) {
+        UserShortDto u = new UserShortDto(userId, "");
+        return u;
+    }
+
+    // ===== Stats =====
+    private void saveHit() {
+        try {
+            HttpServletRequest req = currentRequest();
+            if (req == null) return;
+
+            String uri = req.getRequestURI();
+            String ip = clientIp(req);
+            statClient.create(new EndpointHit(appName, uri, ip, LocalDateTime.now()));
+        } catch (Exception ex) {
+            log.warn("StatService hit failed: {}", ex.getMessage());
+        }
+    }
+
+    private Map<Long, Long> fetchViews(List<Event> events) {
+        if (events == null || events.isEmpty()) return Map.of();
+
+        LocalDateTime start = events.stream()
+                .map(e -> Optional.ofNullable(e.getPublishedOn()).orElse(e.getCreatedOn()))
+                .filter(Objects::nonNull)
+                .min(LocalDateTime::compareTo)
+                .orElse(LocalDateTime.now());
+
+        List<String> uris = events.stream()
+                .map(e -> "/events/" + e.getId())
+                .distinct()
+                .toList();
+
+        try {
+            List<ViewStats> stats = statClient.getStats(start, LocalDateTime.now(), uris, true);
+            Map<String, Long> hitsByUri = stats == null ? Map.of() :
+                    stats.stream().collect(Collectors.toMap(
+                            ViewStats::getUri,
+                            s -> (long) s.getHits(),
+                            Long::sum
+                    ));
+
+            Map<Long, Long> result = new HashMap<>();
+            for (Event e : events) {
+                long v = hitsByUri.getOrDefault("/events/" + e.getId(), 0L);
+                result.put(e.getId(), v);
+            }
+            return result;
+        } catch (Exception ex) {
+            log.warn("StatService getStats failed: {}", ex.getMessage());
+            return events.stream().collect(Collectors.toMap(Event::getId, e -> 0L));
+        }
+    }
+
+    private HttpServletRequest currentRequest() {
+        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        return attrs != null ? attrs.getRequest() : null;
+    }
+
+    private String clientIp(HttpServletRequest req) {
+        String xff = req.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            int comma = xff.indexOf(',');
+            return comma > 0 ? xff.substring(0, comma).trim() : xff.trim();
+        }
+        return req.getRemoteAddr();
     }
 }
-

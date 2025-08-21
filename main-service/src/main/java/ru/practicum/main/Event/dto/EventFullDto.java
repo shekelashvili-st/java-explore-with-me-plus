@@ -1,6 +1,7 @@
 package ru.practicum.main.Event.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.Min;
 import lombok.*;
 import ru.practicum.main.Category.dto.CategoryDto;
 import ru.practicum.main.Event.entity.EventState;
@@ -26,6 +27,8 @@ public class EventFullDto {
     private UserShortDto initiator;
     private LocationDto location;
     private Boolean paid;
+
+    @Min(0)
     private Integer participantLimit = 0;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")

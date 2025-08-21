@@ -1,3 +1,12 @@
+--DROP TABLE event_audit;
+--DROP TABLE event_views;
+--DROP TABLE compilation_events;
+--DROP TABLE compilations;
+--DROP TABLE participation_requests;
+--DROP TABLE events;
+--DROP TABLE categories;
+--DROP TABLE users;
+
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(254) NOT NULL UNIQUE,
