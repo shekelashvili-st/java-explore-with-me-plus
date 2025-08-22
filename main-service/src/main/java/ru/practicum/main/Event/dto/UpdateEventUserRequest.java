@@ -8,7 +8,11 @@ import ru.practicum.main.Event.entity.UserStateAction;
 
 import java.time.LocalDateTime;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UpdateEventUserRequest {
     @Size(min = 20, max = 2000)
     private String annotation;

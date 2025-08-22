@@ -3,7 +3,11 @@ package ru.practicum.main.Event.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class NewEventDto {
     @NotBlank @Size(min = 20, max = 2000)
     private String annotation;

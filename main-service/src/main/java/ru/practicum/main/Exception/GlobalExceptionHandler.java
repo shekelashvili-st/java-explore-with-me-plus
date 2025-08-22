@@ -1,24 +1,39 @@
 package ru.practicum.main.Exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.Collections;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public Map<String, String> handleNotFound(final NotFoundException e) {
-        return Map.of("error", e.getMessage());
+    public ApiError  handleNotFound(final NotFoundException e) {
+        String reason = "Not found";
+        log.error(reason + ". " + e.getMessage());
+        return new ApiError(Collections.singletonList(e.getMessage()), e.getMessage(), reason, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler
     @ResponseStatus(HttpStatus.CONFLICT)
-    public Map<String, String> handleConflict(final ConflictException e) {
-        return Map.of("error", e.getMessage());
+    public ApiError  handleConflict(final ConflictException e) {
+        String reason = "Conflict";
+        log.error(reason + ". " + e.getMessage());
+        return new ApiError(Collections.singletonList(e.getMessage()), e.getMessage(), reason, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiError  handleConflict(final ForbiddenException e) {
+        String reason = "Forbidden";
+        log.error(reason + ". " + e.getMessage());
+        return new ApiError(Collections.singletonList(e.getMessage()), e.getMessage(), reason, HttpStatus.FORBIDDEN);
     }
 }
