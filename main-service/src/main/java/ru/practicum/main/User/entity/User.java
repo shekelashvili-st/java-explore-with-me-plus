@@ -16,10 +16,10 @@ public class User {
     private Long id;
 
     @Column(name = "name", nullable = false, length = 250)
-    private final String name;
+    private String name;
 
     @Column(name = "email", nullable = false, unique = true, length = 254)
-    private final String email;
+    private String email;
 
     @Override
     public boolean equals(Object o) {

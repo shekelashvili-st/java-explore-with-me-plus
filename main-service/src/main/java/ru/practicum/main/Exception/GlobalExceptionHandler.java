@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Collections;
-import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
@@ -35,5 +34,13 @@ public class GlobalExceptionHandler {
         String reason = "Forbidden";
         log.error(reason + ". " + e.getMessage());
         return new ApiError(Collections.singletonList(e.getMessage()), e.getMessage(), reason, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError  handleBadRequest(final BadRequestException e) {
+        String reason = "Bad Request";
+        log.error(reason + ". " + e.getMessage());
+        return new ApiError(Collections.singletonList(e.getMessage()), e.getMessage(), reason, HttpStatus.BAD_REQUEST);
     }
 }

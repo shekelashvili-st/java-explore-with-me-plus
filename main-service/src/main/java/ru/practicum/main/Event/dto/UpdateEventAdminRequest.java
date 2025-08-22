@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.*;
-import ru.practicum.main.Event.entity.UserStateAction;
+import ru.practicum.main.Event.entity.AdminStateAction;
 
 import java.time.LocalDateTime;
 
@@ -33,7 +33,7 @@ public class UpdateEventAdminRequest {
     private Boolean requestModeration;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING)
-    private UserStateAction stateAction;
+    private AdminStateAction stateAction;
 
     @Size(min = 3, max = 120)
     private String title;

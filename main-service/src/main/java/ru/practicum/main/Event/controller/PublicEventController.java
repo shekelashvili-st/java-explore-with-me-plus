@@ -1,5 +1,6 @@
 package ru.practicum.main.Event.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,9 +32,10 @@ public class PublicEventController {
             @Pattern(regexp = "EVENT_DATE|VIEWS", message = "sort must be EVENT_DATE or VIEWS")
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") Integer from,
-            @RequestParam(defaultValue = "10") Integer size
+            @RequestParam(defaultValue = "10") Integer size,
+            HttpServletRequest request
     ) {
-        log.info("PUBLIC /events from={} size={}", from, size);
+        log.info("PUBLIC /events from={} size={} ip={} uri={}", from, size, request.getRemoteAddr(), request.getRequestURI());
         List<EventShortDto> newList = eventService.getAllPublicEvents(text, categories, paid,
                 rangeStart, rangeEnd, onlyAvailable, sort, from, size);
         log.debug("SUCCESS: PUBLIC /events newList={}", newList);
@@ -41,10 +43,10 @@ public class PublicEventController {
     }
 
     @GetMapping("/{id}")
-    public EventFullDto getPublishedEventById(@PathVariable Long id) {
+    public EventFullDto getPublishedEventById(@PathVariable Long id, HttpServletRequest request) {
         log.info("PUBLIC /events/{}", id);
         EventFullDto newdto = eventService.getPublishedEventById(id);
-        log.debug("SUCCESS: PUBLIC /events/{} newdto={}", id, newdto);
+        log.debug("SUCCESS: PUBLIC /events/{} newdto={} ip={} uri={}", id, newdto, request.getRemoteAddr(), request.getRequestURI());
         return newdto;
     }
 }

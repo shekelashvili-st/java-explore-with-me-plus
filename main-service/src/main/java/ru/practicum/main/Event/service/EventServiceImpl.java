@@ -4,27 +4,26 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-import ru.practicum.main.Category.repository.CategoryRepository;
 import ru.practicum.main.Category.dto.CategoryDto;
 import ru.practicum.main.Category.entity.Category;
 import ru.practicum.main.Category.mapper.CategoryMapper;
+import ru.practicum.main.Category.repository.CategoryRepository;
 import ru.practicum.main.Event.dto.*;
 import ru.practicum.main.Event.entity.Event;
 import ru.practicum.main.Event.entity.EventState;
 import ru.practicum.main.Event.mapper.EventMapper;
 import ru.practicum.main.Event.repository.EventRepository;
 import ru.practicum.main.Event.repository.EventSpecifications;
+import ru.practicum.main.Exception.BadRequestException;
 import ru.practicum.main.Exception.ConflictException;
 import ru.practicum.main.Exception.NotFoundException;
+import ru.practicum.main.Request.entity.RequestStatus;
+import ru.practicum.main.Request.repository.ParticipationRequestRepository;
 import ru.practicum.main.User.dto.UserShortDto;
 import ru.practicum.stat.client.StatClient;
 import ru.practicum.stat.dto.EndpointHit;
@@ -43,6 +42,7 @@ public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
+    private final ParticipationRequestRepository requestRepository;
     private final StatClient statClient;
 
     @Value("${app.name:ewm-main}")
@@ -69,22 +69,26 @@ public class EventServiceImpl implements EventService {
         if (start == null && end == null) start = LocalDateTime.now();
         ensureRangeValid(start, end);
 
-        Specification<Event> spec = EventSpecifications.publicSearch(text, categories, paid, start, end);
+        var spec = EventSpecifications.publicSearch(text, categories, paid, start, end);
 
         List<Event> events = eventRepository.findAll(spec);
 
         if (Boolean.TRUE.equals(onlyAvailable)) {
             events = events.stream()
-                    .filter(e -> e.getParticipantLimit() == null || e.getParticipantLimit() == 0
-                            || getConfirmedCount(e.getId()) < e.getParticipantLimit())
+                    .filter(e -> {
+                        Integer limit = e.getParticipantLimit();
+                        if (limit == null || limit == 0) return true;
+                        long confirmed = getConfirmedCount(e.getId());
+                        return confirmed < limit;
+                    })
                     .collect(Collectors.toList());
         }
 
         Map<Long, Long> viewsByEvent = fetchViews(events);
 
-        String sortMode = (sort == null) ? "EVENT_DATE" : sort;
+        String sortMode = (sort == null) ? "EVENT_DATE" : sort.toUpperCase(Locale.ROOT);
         Comparator<Event> byDate = Comparator.comparing(Event::getEventDate);
-        if ("VIEWS".equalsIgnoreCase(sortMode)) {
+        if ("VIEWS".equals(sortMode)) {
             Comparator<Event> byViewsDesc = Comparator
                     .comparing((Event e) -> viewsByEvent.getOrDefault(e.getId(), 0L))
                     .reversed()
@@ -94,11 +98,12 @@ public class EventServiceImpl implements EventService {
             events.sort(byDate);
         }
 
-        int startIdx = Math.max(0, from == null ? 0 : from);
-        int endIdx = Math.min(events.size(), startIdx + (size == null ? 10 : size));
-        if (startIdx > endIdx) return List.of();
+        int f = from == null ? 0 : Math.max(0, from);
+        int s = size == null ? 10 : Math.max(1, size);
+        int to = Math.min(events.size(), f + s);
+        if (f >= events.size()) return List.of();
 
-        return events.subList(startIdx, endIdx).stream()
+        return events.subList(f, to).stream()
                 .map(e -> toShortDtoRich(e, viewsByEvent.getOrDefault(e.getId(), 0L)))
                 .collect(Collectors.toList());
     }
@@ -117,21 +122,17 @@ public class EventServiceImpl implements EventService {
     // ===== Private =====
     @Override
     public List<EventShortDto> getUserEvents(Long userId, Integer from, Integer size) {
-        int f = from == null ? 0 : from;
-        int s = size == null ? 10 : size;
+        int f = from == null ? 0 : Math.max(0, from);
+        int s = size == null ? 10 : Math.max(1, size);
+        int page = f / s;
 
-        int page = from / size;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdOn"));
+        Pageable pageable = PageRequest.of(page, s, Sort.by(Sort.Direction.DESC, "createdOn"));
+        Page<Event> pageObj = eventRepository.findByInitiatorId(userId, pageable);
+        List<Event> events = pageObj.getContent();
 
-        Page<Event> eventsPage = eventRepository.findByInitiatorId(userId, pageable);
-        List<Event> events = eventsPage.getContent();
-        int startIdx = Math.max(0, f);
-        int endIdx = Math.min(events.size(), startIdx + s);
-        if (startIdx > endIdx) return List.of();
+        Map<Long, Long> viewsByEvent = fetchViews(events);
 
-        Map<Long, Long> viewsByEvent = fetchViews(events.subList(startIdx, endIdx));
-
-        return events.subList(startIdx, endIdx).stream()
+        return events.stream()
                 .map(e -> toShortDtoRich(e, viewsByEvent.getOrDefault(e.getId(), 0L)))
                 .collect(Collectors.toList());
     }
@@ -141,14 +142,15 @@ public class EventServiceImpl implements EventService {
     public EventFullDto addEvent(Long userId, NewEventDto body) {
         LocalDateTime eventDate = parseRequired(body.getEventDate());
         if (!eventDate.isAfter(LocalDateTime.now().plusHours(2))) {
-            throw new ConflictException("Field: eventDate. Error: должно содержать дату, которая ещё не наступила. Value: " + body.getEventDate());
+            throw new BadRequestException("Field: eventDate. Error: должно содержать дату, которая ещё не наступила. Value: " + body.getEventDate());
         }
 
         Category category = categoryRepository.findById(body.getCategory())
                 .orElseThrow(() -> new NotFoundException("Category with id=" + body.getCategory() + " was not found"));
 
-        Event saved = eventRepository.save(EventMapper.toEntity(body, category, userId));
-        return toFullDtoRich(saved, 0L);
+        Event preSaved = EventMapper.toEntity(body, category, userId);
+
+        return toFullDtoRich(eventRepository.save(preSaved), 0L);
     }
 
     @Override
@@ -172,9 +174,9 @@ public class EventServiceImpl implements EventService {
         if (body.getTitle() != null) e.setTitle(body.getTitle());
 
         if (body.getEventDate() != null) {
-            LocalDateTime newDate = parseRequired(body.getEventDate().toString());
+            LocalDateTime newDate = body.getEventDate();
             if (!newDate.isAfter(LocalDateTime.now().plusHours(2))) {
-                throw new ConflictException("Field: eventDate. Error: должно содержать дату, которая ещё не наступила. Value: " + body.getEventDate());
+                throw new BadRequestException("Field: eventDate. Error: должно содержать дату, которая ещё не наступила. Value: " + body.getEventDate());
             }
             e.setEventDate(newDate);
         }
@@ -221,13 +223,13 @@ public class EventServiceImpl implements EventService {
             }).toList();
         }
 
-        Specification<Event> spec = EventSpecifications.adminSearch(users, st, categories, start, end);
+        var spec = EventSpecifications.adminSearch(users, st, categories, start, end);
         List<Event> events = eventRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdOn"));
 
-        int f = from == null ? 0 : from;
-        int s = size == null ? 10 : size;
+        int f = from == null ? 0 : Math.max(0, from);
+        int s = size == null ? 10 : Math.max(1, size);
         int to = Math.min(events.size(), f + s);
-        if (f > to) return List.of();
+        if (f >= events.size()) return List.of();
 
         Map<Long, Long> viewsByEvent = fetchViews(events.subList(f, to));
 
@@ -245,7 +247,12 @@ public class EventServiceImpl implements EventService {
         if (body.getAnnotation() != null) e.setAnnotation(body.getAnnotation());
         if (body.getDescription() != null) e.setDescription(body.getDescription());
         if (body.getTitle() != null) e.setTitle(body.getTitle());
-        if (body.getEventDate() != null) e.setEventDate(parseRequired(body.getEventDate().toString()));
+
+        if (body.getEventDate() != null && LocalDateTime.now().isAfter(body.getEventDate())) {
+            throw new BadRequestException("Date should be in the future. Value: " + body.getEventDate());
+        }
+
+        if (body.getEventDate() != null) e.setEventDate(body.getEventDate());
         if (body.getLocation() != null) { e.setLat(body.getLocation().getLat()); e.setLon(body.getLocation().getLon()); }
         if (body.getPaid() != null) e.setPaid(body.getPaid());
         if (body.getParticipantLimit() != null) e.setParticipantLimit(body.getParticipantLimit());
@@ -287,7 +294,7 @@ public class EventServiceImpl implements EventService {
     // ===== Helpers =====
     private void ensureRangeValid(LocalDateTime start, LocalDateTime end) {
         if (start != null && end != null && end.isBefore(start)) {
-            throw new ConflictException("rangeEnd must not be before rangeStart");
+            throw new BadRequestException("rangeEnd must not be before rangeStart");
         }
     }
 
@@ -309,9 +316,8 @@ public class EventServiceImpl implements EventService {
         return e;
     }
 
-    // TODO: заменить, когда появится модуль заявок
     private long getConfirmedCount(Long eventId) {
-        return 0L;
+        return requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
     }
 
     private EventFullDto toFullDtoRich(Event e, long views) {
@@ -334,8 +340,7 @@ public class EventServiceImpl implements EventService {
     }
 
     private UserShortDto buildInitiator(Long userId) {
-        UserShortDto u = new UserShortDto(userId, "");
-        return u;
+        return new UserShortDto(userId, "");
     }
 
     // ===== Stats =====
