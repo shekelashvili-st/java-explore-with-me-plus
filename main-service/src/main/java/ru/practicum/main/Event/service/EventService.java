@@ -1,5 +1,6 @@
 package ru.practicum.main.Event.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import ru.practicum.main.Event.dto.*;
 
 import java.util.List;
@@ -8,9 +9,10 @@ public interface EventService {
     // ===== Public =====
     List<EventShortDto> getAllPublicEvents(String text, List<Long> categories,
                                          Boolean paid, String rangeStart, String rangeEnd,
-                                         Boolean onlyAvailable, String sort, Integer from, Integer size);
+                                         Boolean onlyAvailable, String sort, Integer from, Integer size,
+                                           HttpServletRequest request);
 
-    EventFullDto getPublishedEventById(Long eventId);
+    EventFullDto getPublishedEventById(Long eventId, HttpServletRequest request);
 
     // ===== Private =====
     List<EventShortDto> getUserEvents(Long userId, Integer from, Integer size);

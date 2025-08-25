@@ -25,6 +25,7 @@ import ru.practicum.main.Exception.NotFoundException;
 import ru.practicum.main.Request.entity.RequestStatus;
 import ru.practicum.main.Request.repository.ParticipationRequestRepository;
 import ru.practicum.main.User.dto.UserShortDto;
+import ru.practicum.main.Views.service.EventViewService;
 import ru.practicum.stat.client.StatClient;
 import ru.practicum.stat.dto.EndpointHit;
 import ru.practicum.stat.dto.ViewStats;
@@ -37,12 +38,13 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional(readOnly = true)
+@Transactional
 public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
     private final ParticipationRequestRepository requestRepository;
+    private final EventViewService eventViewService;
     private final StatClient statClient;
 
     @Value("${app.name:ewm-main}")
@@ -60,8 +62,10 @@ public class EventServiceImpl implements EventService {
                                                   Boolean onlyAvailable,
                                                   String sort,
                                                   Integer from,
-                                                  Integer size) {
-        saveHit();
+                                                  Integer size,
+                                                  HttpServletRequest request) {
+        //eventViewService.recordFrom();
+        saveHit(request);
 
         LocalDateTime start = parse(rangeStart);
         LocalDateTime end = parse(rangeEnd);
@@ -109,11 +113,13 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventFullDto getPublishedEventById(Long eventId) {
+    public EventFullDto getPublishedEventById(Long eventId, HttpServletRequest request) {
         Event e = eventRepository.findByIdAndState(eventId, EventState.PUBLISHED)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
 
-        saveHit();
+        eventViewService.increaseViews(eventId, request.getRemoteHost());
+
+        saveHit(request);
 
         Map<Long, Long> views = fetchViews(List.of(e));
         return toFullDtoRich(e, views.getOrDefault(e.getId(), 0L));
@@ -331,7 +337,7 @@ public class EventServiceImpl implements EventService {
         dto.setCategory(cat);
         dto.setInitiator(buildInitiator(e.getInitiatorId()));
         dto.setConfirmedRequests(getConfirmedCount(e.getId()));
-        dto.setViews(views);
+        dto.setViews(e.getViews());
         return dto;
     }
 
@@ -349,13 +355,12 @@ public class EventServiceImpl implements EventService {
     }
 
     // ===== Stats =====
-    private void saveHit() {
+    private void saveHit(HttpServletRequest request) {
         try {
-            HttpServletRequest req = currentRequest();
-            if (req == null) return;
+            if (request == null) return;
 
-            String uri = req.getRequestURI();
-            String ip = clientIp(req);
+            String uri = request.getRequestURI();
+            String ip = clientIp(request);
             statClient.create(new EndpointHit(appName, uri, ip, LocalDateTime.now()));
         } catch (Exception ex) {
             log.warn("StatService hit failed: {}", ex.getMessage());

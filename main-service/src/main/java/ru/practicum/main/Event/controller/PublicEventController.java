@@ -37,7 +37,7 @@ public class PublicEventController {
     ) {
         log.info("PUBLIC /events from={} size={} ip={} uri={}", from, size, request.getRemoteAddr(), request.getRequestURI());
         List<EventShortDto> newList = eventService.getAllPublicEvents(text, categories, paid,
-                rangeStart, rangeEnd, onlyAvailable, sort, from, size);
+                rangeStart, rangeEnd, onlyAvailable, sort, from, size, request);
         log.debug("SUCCESS: PUBLIC /events newList={}", newList);
         return newList;
     }
@@ -45,7 +45,7 @@ public class PublicEventController {
     @GetMapping("/{id}")
     public EventFullDto getPublishedEventById(@PathVariable Long id, HttpServletRequest request) {
         log.info("PUBLIC /events/{}", id);
-        EventFullDto newdto = eventService.getPublishedEventById(id);
+        EventFullDto newdto = eventService.getPublishedEventById(id, request);
         log.debug("SUCCESS: PUBLIC /events/{} newdto={} ip={} uri={}", id, newdto, request.getRemoteAddr(), request.getRequestURI());
         return newdto;
     }
