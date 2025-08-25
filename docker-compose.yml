@@ -1,8 +1,7 @@
 services:
-  stat-server:
+  stats-server:                     # <-- было stat-server
     build: stat/stat-server
-    image: stat-server
-    container_name: stat-server
+    image: stats-server
     ports:
       - "9090:9090"
     depends_on:
