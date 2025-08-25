@@ -10,6 +10,6 @@ import java.util.Optional;
 
 public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecificationExecutor<Event> {
     Page<Event> findByInitiatorId(Long initiatorId, Pageable pageable);
-    Optional<Event> findByIdAndState(Long id, EventState state);
 
+    Optional<Event> findByIdAndState(Long id, EventState state);
 }

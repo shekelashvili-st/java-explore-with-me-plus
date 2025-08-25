@@ -22,9 +22,9 @@ public class AdminCategoryController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CategoryDto createCategory (@Valid @RequestBody NewCategoryDto NewcategoryDto) {
-        log.info("Admin Создал категорию: {}", NewcategoryDto);
-        return categoryService.createCategory(NewcategoryDto);
+    public CategoryDto createCategory(@Valid @RequestBody NewCategoryDto newCategoryDto) {
+        log.info("Admin Создал категорию: {}", newCategoryDto);
+        return categoryService.createCategory(newCategoryDto);
     }
 
     @PatchMapping ("/{catId}")

@@ -89,7 +89,6 @@ public class CompilationServiceImpl implements CompilationService {
             compilations = repository.findAll(PageRequest.of(params.getFrom(),
                     params.getSize())).getContent();
         }
-        
         return compilations.stream().map(CompilationMapper::toDto).toList();
     }
 }

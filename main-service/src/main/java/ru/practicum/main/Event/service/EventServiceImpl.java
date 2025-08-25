@@ -218,8 +218,11 @@ public class EventServiceImpl implements EventService {
         List<EventState> st = null;
         if (states != null && !states.isEmpty()) {
             st = states.stream().map(s -> {
-                try { return EventState.valueOf(s); }
-                catch (IllegalArgumentException ex) { throw new ConflictException("Unknown state: " + s); }
+                try {
+                    return EventState.valueOf(s);
+                } catch (IllegalArgumentException ex) {
+                    throw new ConflictException("Unknown state: " + s);
+                }
             }).toList();
         }
 
@@ -253,7 +256,9 @@ public class EventServiceImpl implements EventService {
         }
 
         if (body.getEventDate() != null) e.setEventDate(body.getEventDate());
-        if (body.getLocation() != null) { e.setLat(body.getLocation().getLat()); e.setLon(body.getLocation().getLon()); }
+        if (body.getLocation() != null) {
+            e.setLat(body.getLocation().getLat()); e.setLon(body.getLocation().getLon());
+        }
         if (body.getPaid() != null) e.setPaid(body.getPaid());
         if (body.getParticipantLimit() != null) e.setParticipantLimit(body.getParticipantLimit());
         if (body.getRequestModeration() != null) e.setRequestModeration(body.getRequestModeration());
