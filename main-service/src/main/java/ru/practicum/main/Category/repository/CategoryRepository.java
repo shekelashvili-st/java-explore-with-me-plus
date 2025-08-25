@@ -12,10 +12,12 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     Optional<Category> findByName(String name);
 
-    boolean existsByNameAndIdNot(String name, Long id);
+    boolean existsByNameAndId(String name, Long id);
 
     @Query("SELECT COUNT(e) > 0 FROM Event e WHERE e.category.id = :categoryId")
     boolean hasEvents(@Param("categoryId") Long categoryId);
+
+    boolean existsByNameIgnoreCase(String name);
 
     List<Category> findAllByIdIn(List<Long> ids);
 }

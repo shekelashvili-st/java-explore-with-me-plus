@@ -47,6 +47,14 @@ public class CategoryServiceImpl implements CategoryService {
 
         Category category = getCategoryEntity(categoryId);
 
+        if (categoryRepository.existsByNameAndId(categoryDto.getName(), categoryId)) {
+            return CategoryMapper.toDto(category);
+        }
+
+        if (categoryRepository.existsByNameIgnoreCase(categoryDto.getName())) {
+            throw new ConflictException("new category should have new name");
+        }
+
         Category updatedCategory = CategoryMapper.updateFromDto(categoryDto, category);
         Category savedCategory = categoryRepository.save(updatedCategory);
 
