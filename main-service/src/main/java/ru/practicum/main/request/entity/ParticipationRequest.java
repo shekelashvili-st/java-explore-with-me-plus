@@ -1,10 +1,7 @@
 package ru.practicum.main.request.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -13,7 +10,8 @@ import java.time.LocalDateTime;
         name = "participation_requests",
         uniqueConstraints = @UniqueConstraint(name = "uq_request_event_requester", columnNames = {"event_id", "requester_id"})
 )
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
