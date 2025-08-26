@@ -1,16 +1,14 @@
 package ru.practicum.main.user.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 import java.util.Objects;
 
 @Entity
 @Table(name = "users")
 @RequiredArgsConstructor
-@Data
+@Getter @Setter
 @AllArgsConstructor
 public class User {
 
