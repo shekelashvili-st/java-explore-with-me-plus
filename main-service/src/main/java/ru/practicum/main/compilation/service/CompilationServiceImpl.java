@@ -3,6 +3,7 @@ package ru.practicum.main.compilation.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.main.compilation.dto.CompilationDto;
 import ru.practicum.main.compilation.dto.FindCompilationParams;
 import ru.practicum.main.compilation.dto.NewCompilationDto;
@@ -20,12 +21,14 @@ import java.util.List;
 import java.util.Set;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class CompilationServiceImpl implements CompilationService {
     private final CompilationRepository repository;
     private final EventRepository eventRepository;
 
     @Override
+    @Transactional
     public CompilationDto create(NewCompilationDto dto) {
         Compilation newCompilation = CompilationMapper.toEntity(dto);
         Set<Long> newEventIds = dto.getEvents();
@@ -42,6 +45,7 @@ public class CompilationServiceImpl implements CompilationService {
     }
 
     @Override
+    @Transactional
     public CompilationDto update(UpdateCompilationRequest dto, Long compId) {
         Compilation oldCompilation = repository.findById(compId).orElseThrow(() -> new NotFoundException("Compilation with id=" + compId + " was not found"));
         String newTitle = dto.getTitle();
@@ -63,6 +67,7 @@ public class CompilationServiceImpl implements CompilationService {
     }
 
     @Override
+    @Transactional
     public void delete(Long compId) {
         if (repository.existsById(compId)) {
             repository.deleteById(compId);

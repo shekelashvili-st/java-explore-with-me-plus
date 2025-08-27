@@ -47,7 +47,8 @@ public class GlobalExceptionHandler {
         return new ApiError(Collections.singletonList(e.getMessage()), e.getMessage(), reason, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler({ValidationException.class, MethodArgumentNotValidException.class, MissingRequestValueException.class})
+    @ExceptionHandler({ValidationException.class, MethodArgumentNotValidException.class,
+            MethodArgumentNotValidException.class, MissingRequestValueException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleBadRequestValidation(final Throwable e) {
         String reason = "Bad Request";
@@ -57,7 +58,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ApiError handleUncaught(final Throwable e) {
+    public ApiError handleUncaught(final Exception e) {
         String reason = "Internal server error";
         log.error(reason + ". " + e.getMessage());
         return new ApiError(Collections.singletonList(e.getMessage()), e.getMessage(), reason, HttpStatus.INTERNAL_SERVER_ERROR);
