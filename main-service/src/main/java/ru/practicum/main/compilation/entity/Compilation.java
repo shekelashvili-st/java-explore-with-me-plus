@@ -1,7 +1,10 @@
 package ru.practicum.main.compilation.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import ru.practicum.main.event.entity.Event;
 
 import java.time.LocalDateTime;
@@ -12,8 +15,6 @@ import java.util.Set;
 @Setter
 @RequiredArgsConstructor
 @AllArgsConstructor
-@ToString
-@EqualsAndHashCode(of = "id")
 @Entity
 @Table(name = "compilations")
 public class Compilation {
