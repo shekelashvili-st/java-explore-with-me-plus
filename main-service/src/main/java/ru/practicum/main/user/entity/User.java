@@ -8,7 +8,8 @@ import java.util.Objects;
 @Entity
 @Table(name = "users")
 @RequiredArgsConstructor
-@Getter @Setter
+@Getter
+@Setter
 @AllArgsConstructor
 public class User {
 
