@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.practicum.stat.dto.EndpointHit;
 import ru.practicum.stat.dto.ViewStats;
+import ru.practicum.stat.exception.BadRequestException;
 import ru.practicum.stat.storage.StatStorage;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,10 @@ public class StatServiceImpl implements StatService {
 
     @Override
     public List<ViewStats> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique) {
+        if (start.isAfter(end)) {
+            throw new BadRequestException("Start date cannot be after end date");
+        }
+
         return statStorage.getStats(start, end, uris, unique);
     }
 }
