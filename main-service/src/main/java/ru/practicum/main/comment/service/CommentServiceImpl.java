@@ -57,9 +57,13 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    public CommentDto getCommentById(Long commentId) {
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new NotFoundException("Comment with id=" + commentId + " not found"));
+    public CommentDto getCommentById(Long commentId, Long eventId) {
+        Comment comment = checkCommentAndEvent(commentId, eventId);
+
+        if (comment.getStatus() == CommentStatus.DELETED) {
+            throw new NotFoundException("Comment with id=" + commentId + " was deleted");
+        }
+
         return CommentMapper.toDto(comment);
     }
 
@@ -76,27 +80,28 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public CommentDto updateComment(Long userId, Long commentId, UpdateCommentDto body) {
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new NotFoundException("Comment with id=" + commentId + " not found"));
+    public CommentDto updateComment(Long eventId, Long userId, Long commentId, UpdateCommentDto body) {
+        Comment comment = checkCommentAndEvent(commentId, eventId);
+
         if (!comment.getAuthor().getId().equals(userId)) {
             throw new ConflictException("You can only edit your own comment");
         }
-        if (body.getText() != null) {
-            comment.setText(body.getText());
-        }
+
+        comment.setText(body.getText());
+        comment.setStatus(CommentStatus.UPDATED);
         return CommentMapper.toDto(commentRepository.save(comment));
     }
 
     @Override
     @Transactional
-    public void deleteComment(Long userId, Long commentId) {
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new NotFoundException("Comment with id=" + commentId + " not found"));
+    public void deleteComment(Long eventId, Long userId, Long commentId) {
+        Comment comment = checkCommentAndEvent(commentId, eventId);
+
         if (!comment.getAuthor().getId().equals(userId)) {
             throw new ConflictException("You can only delete your own comment");
         }
-        commentRepository.deleteById(commentId);
+        comment.setStatus(CommentStatus.DELETED);
+        commentRepository.save(comment);
     }
 
     // ===== Admin =====
@@ -137,21 +142,17 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     public CommentDto updateCommentByAdmin(Long commentId, UpdateCommentDto body) {
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new NotFoundException("Comment with id=" + commentId + " not found"));
-        if (body.getText() != null) {
-            comment.setText(body.getText());
-        }
+        Comment comment = checkComment(commentId);
+        comment.setText(body.getText());
+        comment.setStatus(CommentStatus.UPDATED);
         return CommentMapper.toDto(commentRepository.save(comment));
     }
 
     @Override
     @Transactional
     public void deleteCommentByAdmin(Long commentId) {
-        if (!commentRepository.existsById(commentId)) {
-            throw new NotFoundException("Comment with id=" + commentId + " not found");
-        }
-        commentRepository.deleteById(commentId);
+        Comment comment = checkComment(commentId);
+        commentRepository.deleteById(comment.getId());
     }
 
     // ===== Helpers =====
@@ -166,9 +167,25 @@ public class CommentServiceImpl implements CommentService {
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found"));
     }
 
+    private Comment checkComment(Long commentId) {
+        return commentRepository.findById(commentId)
+                .orElseThrow(() -> new NotFoundException("Comment with id=" + commentId + " not found"));
+    }
+
     private User checkAuthor(Long authorId) {
         return userRepository.findById(authorId)
                 .orElseThrow(() -> new NotFoundException("User with id=" + authorId + " not found"));
+    }
+
+    private Comment checkCommentAndEvent(Long commentId, Long eventId) {
+        Comment comment = checkComment(commentId);
+        Event event = checkEvent(eventId);
+
+        if (!comment.getEvent().getId().equals(event.getId())) {
+            throw new BadRequestException("Comment with id=" + commentId
+                    + " does not belong to event with id=" + eventId);
+        }
+        return comment;
     }
 
     private List<CommentDto> getPaginatedComments(org.springframework.data.jpa.domain.Specification<Comment> spec,

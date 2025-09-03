@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import ru.practicum.main.comment.entity.CommentStatus;
 import ru.practicum.main.user.dto.UserShortDto;
 
 import java.time.LocalDateTime;
@@ -26,5 +27,6 @@ public class CommentDto {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdOn;
 
-    private String status;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private CommentStatus status;
 }

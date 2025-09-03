@@ -28,8 +28,8 @@ public class PublicCommentController {
     }
 
     @GetMapping("/{commentId}")
-    public CommentDto getComment(@PathVariable Long commentId) {
-        log.info("PUBLIC get comment={}", commentId);
-        return commentService.getCommentById(commentId);
+    public CommentDto getComment(@PathVariable Long eventId, @PathVariable Long commentId) {
+        log.info("PUBLIC get comment={} to event={}", commentId, eventId);
+        return commentService.getCommentById(eventId, commentId);
     }
 }

@@ -32,7 +32,7 @@ public class CommentMapper {
                 .author(new UserShortDto(comment.getAuthor().getId(), comment.getAuthor().getName()))
                 .eventId(comment.getEvent().getId())
                 .createdOn(comment.getCreatedOn())
-                .status(comment.getStatus().name())
+                .status(comment.getStatus())
                 .build();
     }
 }
