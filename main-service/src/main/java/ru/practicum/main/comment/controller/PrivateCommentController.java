@@ -1,6 +1,7 @@
 package ru.practicum.main.comment.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -22,13 +23,17 @@ public class PrivateCommentController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CommentDto createComment(@PathVariable Long userId, @PathVariable Long eventId, @Valid @RequestBody NewCommentDto body) {
+    public CommentDto createComment(@PathVariable @Positive Long userId,
+                                    @PathVariable @Positive Long eventId,
+                                    @Valid @RequestBody NewCommentDto body) {
         log.info("PRIVATE create comment by user={} for event={}", userId, eventId);
         return commentService.createComment(userId, eventId, body);
     }
 
     @PatchMapping("/{commentId}")
-    public CommentDto updateComment(@PathVariable Long eventId, @PathVariable Long userId, @PathVariable Long commentId,
+    public CommentDto updateComment(@PathVariable @Positive Long eventId,
+                                    @PathVariable @Positive Long userId,
+                                    @PathVariable @Positive Long commentId,
                                     @Valid @RequestBody UpdateCommentDto body) {
         log.info("PRIVATE update comment={} by user={} to event={}", commentId, userId, eventId);
         return commentService.updateComment(eventId, userId, commentId, body);
@@ -36,7 +41,9 @@ public class PrivateCommentController {
 
     @DeleteMapping("/{commentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteComment(@PathVariable Long eventId, @PathVariable Long userId, @PathVariable Long commentId) {
+    public void deleteComment(@PathVariable @Positive Long eventId,
+                              @PathVariable @Positive Long userId,
+                              @PathVariable @Positive Long commentId) {
         log.info("PRIVATE delete comment={} by user={} to event={}", commentId, userId, eventId);
         commentService.deleteComment(eventId, userId, commentId);
     }

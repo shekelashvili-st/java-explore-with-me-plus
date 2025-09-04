@@ -20,6 +20,7 @@ import ru.practicum.main.event.entity.EventState;
 import ru.practicum.main.event.repository.EventRepository;
 import ru.practicum.main.exception.BadRequestException;
 import ru.practicum.main.exception.ConflictException;
+import ru.practicum.main.exception.ForbiddenException;
 import ru.practicum.main.exception.NotFoundException;
 import ru.practicum.main.request.entity.RequestStatus;
 import ru.practicum.main.request.repository.ParticipationRequestRepository;
@@ -84,7 +85,7 @@ public class CommentServiceImpl implements CommentService {
         Comment comment = checkCommentAndEvent(commentId, eventId);
 
         if (!comment.getAuthor().getId().equals(userId)) {
-            throw new ConflictException("You can only edit your own comment");
+            throw new ForbiddenException("You can only edit your own comment");
         }
 
         comment.setText(body.getText());
@@ -98,7 +99,7 @@ public class CommentServiceImpl implements CommentService {
         Comment comment = checkCommentAndEvent(commentId, eventId);
 
         if (!comment.getAuthor().getId().equals(userId)) {
-            throw new ConflictException("You can only delete your own comment");
+            throw new ForbiddenException("You can only delete your own comment");
         }
         comment.setStatus(CommentStatus.DELETED);
         commentRepository.save(comment);
@@ -139,6 +140,7 @@ public class CommentServiceImpl implements CommentService {
 
         return getPaginatedComments(spec, from, size);
     }
+
     @Override
     @Transactional
     public CommentDto updateCommentByAdmin(Long commentId, UpdateCommentDto body) {
@@ -205,7 +207,7 @@ public class CommentServiceImpl implements CommentService {
                 throw new ConflictException("Only PUBLISHED or CANCELED events can be commented on by users");
             }
             if (event.getState() != EventState.CANCELED && !isUserParticipating(event.getId(), author.getId())) {
-                throw new ConflictException("User is not participating in event he tries to comment");
+                throw new ForbiddenException("User is not participating in event he tries to comment");
             }
         }
 
