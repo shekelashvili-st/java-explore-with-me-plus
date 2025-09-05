@@ -42,11 +42,11 @@ public class PublicEventController {
         return newList;
     }
 
-    @GetMapping("/{id}")
-    public EventFullDto getPublishedEventById(@PathVariable Long id, HttpServletRequest request) {
-        log.info("PUBLIC /events/{}", id);
-        EventFullDto newdto = eventService.getPublishedEventById(id, request);
-        log.debug("SUCCESS: PUBLIC /events/{} newdto={} ip={} uri={}", id, newdto, request.getRemoteAddr(), request.getRequestURI());
+    @GetMapping("/{eventId}")
+    public EventFullDto getPublishedEventById(@PathVariable Long eventId, HttpServletRequest request) {
+        log.info("PUBLIC /events/{}", eventId);
+        EventFullDto newdto = eventService.getPublishedEventById(eventId, request);
+        log.debug("SUCCESS: PUBLIC /events/{} newdto={} ip={} uri={}", eventId, newdto, request.getRemoteAddr(), request.getRequestURI());
         return newdto;
     }
 }

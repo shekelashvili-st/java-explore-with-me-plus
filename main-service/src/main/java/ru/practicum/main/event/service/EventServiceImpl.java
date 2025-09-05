@@ -65,7 +65,6 @@ public class EventServiceImpl implements EventService {
                                                   Integer from,
                                                   Integer size,
                                                   HttpServletRequest request) {
-        //eventViewService.recordFrom();
         saveHit(request);
 
         LocalDateTime start = parse(rangeStart);
